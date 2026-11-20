@@ -6,3 +6,5 @@ data
 public/engine
 .env.local
 *.log
+deploy/.env
+deploy/backups

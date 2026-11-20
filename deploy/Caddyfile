@@ -1,0 +1,9 @@
+# Caddy fetches and renews the HTTPS certificate for $DOMAIN by itself.
+# WebSockets (/ws) pass straight through reverse_proxy.
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}
+
+{$DOMAIN} {
+	reverse_proxy app:8080
+}

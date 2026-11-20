@@ -1,0 +1,46 @@
+# Counterplay in production: the app, plus either Caddy (HTTPS on a server
+# with a public IP) or Cloudflare Tunnel (no open ports, e.g. a home PC).
+# Pick one with COMPOSE_PROFILES in deploy/.env: "https" or "tunnel".
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      DATA_DIR: /data
+      TRUST_PROXY: "1"
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in deploy/.env}
+    volumes:
+      - counterplay-data:/data
+    stop_grace_period: 10s
+
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    depends_on: [app]
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+
+volumes:
+  counterplay-data:
+  caddy-data:
+  caddy-config:

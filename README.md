@@ -36,7 +36,7 @@ Everything online runs in one Node process (`server/`, Node 22.18+ loads the Typ
 | `server/glicko.ts` | Glicko-2 ratings per speed |
 | `src/online/` | The browser side: the shared socket (`connection.ts`), account calls (`api.ts`), the game hook (`useOnlineGame.ts`) |
 
-**Deploy.** `docker build -t counterplay . && docker run -p 8080:8080 -v counterplay-data:/data counterplay`. Without Docker: `npm ci && npm run build && NODE_ENV=production npm start`. Whatever the host (Fly.io, Render, Railway, a VPS):
+**Deploy.** Step-by-step guides for a free Oracle Cloud server or your own PC with Cloudflare Tunnel, with HTTPS on your own domain, are in [`deploy/README.md`](deploy/README.md) (`deploy/setup.sh` does the server setup in one command). By hand: `docker build -t counterplay . && docker run -p 8080:8080 -v counterplay-data:/data counterplay`. Without Docker: `npm ci && npm run build && NODE_ENV=production npm start`. Whatever the host (Fly.io, Render, Railway, a VPS):
 
 - **Mount a persistent volume at `DATA_DIR`** (`/data` in the image). The SQLite database lives there; without a volume every deploy wipes accounts and games.
 - **Run exactly one instance.** Live games are held in that process's memory; two instances would split players between them. (A restart is fine: live games are saved on every move and on shutdown, and resume with the downtime not charged.)
