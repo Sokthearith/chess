@@ -264,7 +264,7 @@ function shutdown(signal: string) {
   for (const room of hub.rooms.values()) {
     if (room.status !== 'live') continue
     const c = room.currentClocks()
-    saveProgress(room.id, room.moves, c.w, c.b)
+    saveProgress(room.id, room.moves, room.times, c.w, c.b)
   }
   for (const c of hub.conns) c.ws.close(1012, 'Server restarting')
   server.close(() => process.exit(0))

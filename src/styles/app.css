@@ -1106,3 +1106,9 @@ button.chip:not(.chip--on) { color: inherit; }
 .player-card__who { display: grid; gap: var(--space-sm); align-content: start; }
 /* The sticky start button belongs to the Play setup only. */
 .friend .setup__start, .account .setup__start, .play--online .setup__start { position: static; box-shadow: none; }
+
+/* ---------- premoves (added 2026-11-20) ----------
+   A queued move: both squares get a dashed frame and a light hatch in the
+   ordinary mark colour. Dashed means "not played yet"; no new colour. */
+.sq--premove::before { box-shadow: none; border: 3px dashed var(--mark); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--mark) 26%, transparent) 0 5px, transparent 5px 11px); }
+.sq--dark.sq--premove::before { outline: 1px solid var(--board-light); outline-offset: -1px; }

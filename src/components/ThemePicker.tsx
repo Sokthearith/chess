@@ -61,6 +61,7 @@ export function BoardOptions() {
     { key: 'coords' as const, label: 'Coordinates', sub: 'a–h and 1–8 on the board edge' },
     { key: 'hints' as const, label: 'Legal-move dots', sub: 'Show where a picked-up piece can go' },
     { key: 'autoQueen' as const, label: 'Auto-queen', sub: 'Promote to a queen without asking' },
+    { key: 'premoves' as const, label: 'Premoves', sub: 'Online: play your next move during their turn' },
   ]
   return (
     <fieldset className="board-opts">

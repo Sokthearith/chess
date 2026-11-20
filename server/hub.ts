@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import type { WebSocket } from 'ws'
 import { RateLimiter, type Identity } from './auth.ts'
-import { gameById, liveGames, userById } from './db.ts'
+import { chatOf, gameById, liveGames, purgeChat, userById } from './db.ts'
 import { GameRoom, playerInfo, viewOfRow, type Conn, type RoomHost } from './game.ts'
 import { PROVISIONAL_RD } from './glicko.ts'
 import {
@@ -26,6 +26,10 @@ const ID_CHARS = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const ID_RE = /^[A-Za-z0-9]{1,16}$/
 const ENDED_KEEP_MS = 10 * 60_000
 const CHALLENGE_KEEP_MS = 30 * 60_000
+/** How often players in a live game get a lag probe. */
+const LAG_PROBE_MS = 3000
+/** Replies slower than this are a stall, not lag: ignored. */
+const LAG_SAMPLE_MAX = 5000
 
 function newId(len = 8): string {
   const bytes = randomBytes(len)
@@ -58,6 +62,8 @@ export class Hub implements RoomHost {
   chatLimit = new RateLimiter(5, 0.5)
   msgLimit = new RateLimiter(40, 20)
   lobbyTimer: NodeJS.Timeout | null = null
+  lagSeq = 0
+  lastChatPurge = 0
 
   constructor() {
     for (const row of liveGames()) {
@@ -70,6 +76,7 @@ export class Hub implements RoomHost {
     if (this.rooms.size) console.log(`restored ${this.rooms.size} live game(s)`)
     setInterval(() => this.matchmake(), 2000).unref()
     setInterval(() => this.sweep(), 60_000).unref()
+    setInterval(() => this.probeLag(), LAG_PROBE_MS).unref()
   }
 
   /* ---------------------------------------------------------- connections */
@@ -82,6 +89,8 @@ export class Hub implements RoomHost {
       watching: new Set(),
       lobby: false,
       alive: true,
+      rtt: null,
+      lagProbe: null,
       send(msg: ServerMessage) {
         if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg))
       },
@@ -134,6 +143,32 @@ export class Hub implements RoomHost {
     }
   }
 
+  /** Measure the round trip to every tab that is playing a live game. One probe in flight per tab. */
+  probeLag() {
+    const now = Date.now()
+    for (const c of this.conns) {
+      let playing = false
+      for (const id of c.watching) {
+        const room = this.rooms.get(id)
+        if (room?.status === 'live' && room.sideOf(c.identity.id)) playing = true
+      }
+      if (!playing) continue
+      // An unanswered probe counts as a slow reply once it is older than the cap.
+      if (c.lagProbe && now - c.lagProbe.at < LAG_SAMPLE_MAX) continue
+      c.lagProbe = { n: ++this.lagSeq, at: now }
+      c.send({ t: 'lag', n: c.lagProbe.n })
+    }
+  }
+
+  lagReply(conn: Conn, n: number) {
+    const probe = conn.lagProbe
+    if (!probe || probe.n !== n) return
+    conn.lagProbe = null
+    const sample = Date.now() - probe.at
+    if (sample > LAG_SAMPLE_MAX) return
+    conn.rtt = conn.rtt === null ? sample : conn.rtt * 0.75 + sample * 0.25
+  }
+
   isOnline(userId: string): boolean {
     for (const c of this.conns) if (c.identity.id === userId) return true
     return false
@@ -154,6 +189,8 @@ export class Hub implements RoomHost {
     switch (msg.t) {
       case 'ping':
         return conn.send({ t: 'pong' })
+      case 'lag':
+        return this.lagReply(conn, Number(msg.n))
       case 'lobby.sub':
         conn.lobby = true
         return conn.send(this.lobbyMessage())
@@ -188,7 +225,11 @@ export class Hub implements RoomHost {
         const room = this.rooms.get(msg.id)
         if (room) return room.join(conn)
         const row = gameById(msg.id)
-        if (row && row.status === 'ended') return conn.send({ t: 'game', game: viewOfRow(row, conn.identity.id) })
+        if (row && row.status === 'ended') {
+          conn.send({ t: 'game', game: viewOfRow(row, conn.identity.id) })
+          const lines = chatOf(row.id, 200).map((c) => ({ from: c.name, side: c.side, text: c.text, at: c.at }))
+          return conn.send({ t: 'chat.history', id: row.id, lines })
+        }
         return conn.send({ t: 'gone', id: msg.id })
       }
       case 'unwatch':
@@ -363,6 +404,11 @@ export class Hub implements RoomHost {
   /** Forget finished games nobody is looking at, and stale challenges. */
   sweep() {
     const now = Date.now()
+    if (now - this.lastChatPurge > 3600_000) {
+      this.lastChatPurge = now
+      const n = purgeChat(now)
+      if (n) console.log(`deleted ${n} old chat line(s)`)
+    }
     for (const [id, room] of this.rooms) {
       if (room.status === 'ended' && now - room.endedAt > ENDED_KEEP_MS && room.watchers.size === 0) this.rooms.delete(id)
       if (room.status === 'waiting' && now - room.createdAt > CHALLENGE_KEEP_MS) {

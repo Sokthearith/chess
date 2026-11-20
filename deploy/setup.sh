@@ -53,6 +53,13 @@ fi
 
 echo "==> Building and starting (the first build takes a few minutes)"
 docker compose up -d --build
+
+# A database backup every night at 03:30 server time, kept for 14 days.
+echo "==> Daily backup"
+cat > /etc/cron.d/oukplay-backup <<CRON
+30 3 * * * root ${DIR}/deploy/backup.sh >> /var/log/oukplay-backup.log 2>&1
+CRON
+chmod 644 /etc/cron.d/oukplay-backup
 docker image prune -f >/dev/null
 
 . ./.env
@@ -60,3 +67,4 @@ echo
 echo "Done. Open https://${DOMAIN}"
 echo "If the page does not load yet: check the DNS A record points to $(curl -fsS https://api.ipify.org || echo 'this server'),"
 echo "and that ports 80 and 443 are open in your cloud firewall (Oracle: the subnet's security list)."
+echo "Backups: every night into ${DIR}/deploy/backups (14 days kept). Copy them off this server now and then."

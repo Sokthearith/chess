@@ -102,6 +102,10 @@ async function open() {
       return
     }
     switch (m.t) {
+      case 'lag':
+        // Answer before anything else runs, so the measured time is the network's.
+        sock.send(JSON.stringify({ t: 'lag', n: m.n }))
+        return
       case 'hello':
         set({ user: m.user })
         break

@@ -28,6 +28,12 @@ export interface BoardProps {
   mated?: Square | null
   /** Engine arrows: `best` is the first choice, `alt` the second. */
   arrows?: BoardArrow[]
+  /** Whose pieces can be picked up. Defaults to the side to move; online play sets it to the player, for premoves. */
+  mover?: Color
+  /** A move queued for the player's next turn: both squares are marked. */
+  premove?: { from: Square; to: Square } | null
+  /** Right-click or Escape drops the queued premove. */
+  onCancelPremove?: () => void
 }
 
 export interface BoardArrow {
@@ -155,7 +161,11 @@ export function Board({
   annotation = null,
   mated = null,
   arrows = [],
+  mover,
+  premove = null,
+  onCancelPremove,
 }: BoardProps) {
+  const side = mover ?? position.turn
   const gridRef = useRef<HTMLDivElement>(null)
   const helpId = useId()
   const [cursor, setCursor] = useState<Square>(orientation === 'w' ? 'e1' : 'e8')
@@ -261,20 +271,25 @@ export function Board({
         move({ from: selected, to: square })
         return
       }
-      if (piece && piece.color === position.turn) {
+      if (piece && piece.color === side) {
         onSelect(square)
         return
       }
       onSelect(null)
       return
     }
-    if (piece && piece.color === position.turn) onSelect(square)
+    if (piece && piece.color === side) onSelect(square)
   }
 
   // ---- pointer: tap-tap everywhere, drag for mouse and pen ----
   const onPointerDown = (e: PointerEvent<HTMLButtonElement>, square: Square) => {
     // Right button: start a drawing (a square on release in place, an arrow on release elsewhere).
     if (e.button === 2) {
+      if (premove && onCancelPremove) {
+        e.preventDefault()
+        onCancelPremove()
+        return
+      }
       if (pendingPromotion || drag) return
       e.preventDefault()
       setPen({ from: square, to: square, color: penOf(e) })
@@ -313,7 +328,7 @@ export function Board({
       onSelect(null)
       return
     }
-    if (piece && piece.color === position.turn && e.pointerType !== 'touch') {
+    if (piece && piece.color === side && e.pointerType !== 'touch') {
       onSelect(square)
       setDrag({ from: square, dx: 0, dy: 0, startX: e.clientX, startY: e.clientY, moved: false })
       gridRef.current?.setPointerCapture(e.pointerId)
@@ -400,6 +415,7 @@ export function Board({
       case 'Escape':
         e.preventDefault()
         onSelect(null)
+        onCancelPremove?.()
         setDrawn(NO_DRAWINGS)
         setPenFrom(null)
         return
@@ -459,6 +475,7 @@ export function Board({
                 dark ? 'sq--dark' : 'sq--light',
                 isLast ? 'sq--last' : '',
                 isSel ? 'sq--selected' : '',
+                premove && (premove.from === square || premove.to === square) ? 'sq--premove' : '',
                 isCheck ? 'sq--check' : '',
                 penFrom === square ? 'sq--pen' : '',
                 t ? (t.capture ? 'sq--capture' : 'sq--target') : '',

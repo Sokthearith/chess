@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { premoveTargets } from '../game/premove'
 import { START_FEN, legalTargets, needsPromotion, positionFromFen, tryMove } from '../game/rules'
+import { useSettings } from '../settings/useSettings'
 import type { MoveIntent, MoveRecord, Position, Promotion, Square } from '../game/types'
 import { onMessage, send, watchGame } from './connection'
 import type { ChatLine, GameView, Side } from './protocol'
@@ -40,6 +42,9 @@ export function useOnlineGame(id: string) {
   const [pending, setPending] = useState<{ ply: number; uci: string } | null>(null)
   const [selected, setSelected] = useState<Square | null>(null)
   const [promo, setPromo] = useState<{ from: Square; to: Square } | null>(null)
+  /** A move queued during the opponent's turn. Lives only here; it is sent when it becomes our turn. */
+  const [premove, setPremove] = useState<MoveIntent | null>(null)
+  const premovesOn = useSettings().premoves
   const [viewPly, setViewPly] = useState<number | null>(null)
   const [flipped, setFlipped] = useState(false)
   const receivedAt = useRef(0)
@@ -52,6 +57,7 @@ export function useOnlineGame(id: string) {
     setPending(null)
     setSelected(null)
     setPromo(null)
+    setPremove(null)
     setViewPly(null)
     const off = onMessage((m) => {
       if (m.t === 'game' && m.game.id === id) {
@@ -119,7 +125,11 @@ export function useOnlineGame(id: string) {
   const you = view?.you ?? null
   const live = view?.status === 'live'
   const canMove = live && !!you && liveTurn === you && !pending && isLive
-  const targets = useMemo(() => (selected && canMove ? legalTargets(liveFen, selected) : []), [selected, canMove, liveFen])
+  const canPremove = premovesOn && live && !!you && liveTurn !== you && isLive
+  const targets = useMemo(
+    () => (selected && canMove ? legalTargets(liveFen, selected) : selected && canPremove && you ? premoveTargets(liveFen, selected, you) : []),
+    [selected, canMove, canPremove, liveFen, you],
+  )
 
   // Clocks: the server's numbers, minus the time since they arrived for the side that is thinking.
   const ticking = live && (view?.running !== null || view?.firstMoveMs !== null || view?.claimInMs !== null)
@@ -130,24 +140,51 @@ export function useOnlineGame(id: string) {
   const firstMoveMs = view?.firstMoveMs != null ? Math.max(0, view.firstMoveMs - since) : null
   const claimInMs = view?.claimInMs != null ? Math.max(0, view.claimInMs - since) : null
 
-  const attemptMove = useCallback(
+  /** Send a move from the live position (no checks on whose turn the UI thinks it is). */
+  const play = useCallback(
     (intent: MoveIntent): boolean => {
-      if (!canMove) return false
-      if (!intent.promotion && needsPromotion(liveFen, intent)) {
-        setPromo({ from: intent.from, to: intent.to })
-        return true
-      }
+      if (!view) return false
       const res = tryMove(liveFen, intent)
       if (!res) return false
       const uci = `${res.record.from}${res.record.to}${res.record.promotion ?? ''}`
-      const ply = view!.moves.length
+      const ply = view.moves.length
       send({ t: 'move', id, uci, ply })
       setPending({ ply, uci })
       setSelected(null)
       setPromo(null)
       return true
     },
-    [canMove, liveFen, view, id],
+    [liveFen, view, id],
+  )
+
+  // Our turn came with a premove queued: play it now, or drop it if it is no longer legal.
+  const myTurnNow = live && !!you && liveTurn === you && !pending
+  useEffect(() => {
+    if (!premove) return
+    if (!live || !premovesOn) return setPremove(null)
+    if (!myTurnNow) return
+    setPremove(null)
+    play(premove)
+  }, [premove, myTurnNow, live, premovesOn, play])
+
+  const attemptMove = useCallback(
+    (intent: MoveIntent): boolean => {
+      if (canPremove && you) {
+        if (!premoveTargets(liveFen, intent.from, you).some((t) => t.to === intent.to)) return false
+        const piece = positionFromFen(liveFen).grid[8 - Number(intent.from[1])]?.['abcdefgh'.indexOf(intent.from[0])]
+        const lastRank = intent.to[1] === (you === 'w' ? '8' : '1')
+        setPremove({ from: intent.from, to: intent.to, promotion: piece?.type === 'p' && lastRank ? 'q' : undefined })
+        setSelected(null)
+        return true
+      }
+      if (!canMove) return false
+      if (!intent.promotion && needsPromotion(liveFen, intent)) {
+        setPromo({ from: intent.from, to: intent.to })
+        return true
+      }
+      return play(intent)
+    },
+    [canMove, canPremove, you, liveFen, play],
   )
 
   const promote = useCallback((piece: Promotion) => promo && attemptMove({ ...promo, promotion: piece }), [promo, attemptMove])
@@ -166,6 +203,9 @@ export function useOnlineGame(id: string) {
     selected,
     targets,
     canMove,
+    canPremove,
+    premove,
+    cancelPremove: () => setPremove(null),
     pendingPromotion: promo,
     clocks,
     firstMoveMs,
@@ -174,6 +214,8 @@ export function useOnlineGame(id: string) {
     select: (sq: Square | null) => {
       setSelected(sq)
       setPromo(null)
+      // Picking another piece (or clicking away) replaces or drops the queued premove.
+      setPremove(null)
     },
     attemptMove,
     promote,

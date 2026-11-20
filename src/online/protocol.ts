@@ -132,6 +132,8 @@ export interface GameView {
   black: PlayerInfo | null
   /** Every move so far in long algebraic notation (e2e4, e7e8q). */
   moves: string[]
+  /** The mover's clock (ms) after each move, one per entry in `moves` (may be empty for old games). */
+  times: number[]
   /** Milliseconds left per side at the moment the server sent this. */
   clocks: Record<Side, number>
   /** The side whose clock is running, if any. Clocks start after Black's first move. */
@@ -144,6 +146,8 @@ export interface GameView {
   rematchId: string | null
   result: GameResultInfo | null
   connected: Record<Side, boolean>
+  /** Each player's measured round trip to the server, in ms (null until measured, or when offline). */
+  ping: Record<Side, number | null>
   /** A player whose opponent has been gone this long can claim the win (ms from send), or 0 if they can now. */
   claimInMs: number | null
   spectators: number
@@ -163,6 +167,8 @@ export interface ChatLine {
 
 export type ClientMessage =
   | { t: 'ping' }
+  /** The answer to the server's lag probe, sent straight back. */
+  | { t: 'lag'; n: number }
   | { t: 'lobby.sub' }
   | { t: 'lobby.unsub' }
   | { t: 'seek'; tc: string; rated: boolean }
@@ -183,6 +189,8 @@ export type ClientMessage =
 
 export type ServerMessage =
   | { t: 'pong' }
+  /** A lag probe during a game: answer at once with the same n. */
+  | { t: 'lag'; n: number }
   | { t: 'hello'; user: UserInfo }
   | { t: 'lobby'; seeks: SeekInfo[]; games: LiveGameSummary[]; online: number; playing: number }
   | { t: 'seeking'; seek: SeekInfo | null }

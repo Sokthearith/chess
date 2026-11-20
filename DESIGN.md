@@ -418,3 +418,14 @@ The site is called **Oukplay** (after *ouk*, Cambodian chess); it was Counterpla
 
 - Page titles read `Page, Oukplay`; the home title is just `Oukplay`. Exported PGNs say `Oukplay game` (offline) or `Oukplay rated game` / `Oukplay casual game` (online).
 - Browser storage keys start with `oukplay.` and cookies with `op_`. `index.html` moves any old `counterplay.*` keys over once, so nobody loses settings, saved games or Learn progress.
+
+## 16. Premoves and ping (added 2026-11-20)
+
+**Premoves.** In an online game, during the opponent's turn you can pick up your own piece and drop it on any square its pattern reaches (lines are not blocked, since their move may open them). Legal-move dots show those squares as usual.
+- A queued premove marks both squares with a **dashed frame and a light diagonal hatch in `--mark`**, the same colour as selection and last move. Dashed means "not played yet". No new colour.
+- It plays the instant their move arrives. If it has become illegal, it disappears quietly: no toast, no sound.
+- Cancel: click an empty square, pick another piece, press Escape, or right-click the board (when a premove is queued, right-click cancels instead of drawing).
+- A pawn premoved to the last rank always becomes a queen.
+- A board option in the theme panel, **Premoves** (on by default), next to Auto-queen.
+
+**Ping.** The player strip's small mono line adds `· ping 84` for each connected player during a live game. It's quiet, mute text, and never coloured: a bad connection is information, not an alarm.

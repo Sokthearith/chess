@@ -52,7 +52,14 @@ function pgnOf(view: GameView, history: MoveRecord[]): string {
   const d = new Date()
   const date = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
   const tc = timeControl(view.tc)
-  const moves = history.map((m, i) => (i % 2 === 0 ? `${i / 2 + 1}. ${m.san}` : m.san)).join(' ')
+  // Each move carries the mover's clock after it, as a PGN %clk comment.
+  const clk = (i: number) => {
+    const t = view.times.length === view.moves.length ? view.times[i] : undefined
+    if (t === undefined) return ''
+    const s = Math.max(0, Math.round(t / 1000))
+    return ` {[%clk ${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}]}`
+  }
+  const moves = history.map((m, i) => (i % 2 === 0 ? `${i / 2 + 1}. ${m.san}` : m.san) + clk(i)).join(' ')
   const tags = [
     ['Event', `Oukplay ${view.rated ? 'rated' : 'casual'} game`],
     ['Site', `${location.origin}/game/${view.id}`],
@@ -347,6 +354,7 @@ function Playing({ game, view }: { game: Game; view: GameView }) {
             {NAMES[s].toLowerCase()}
             {you === s ? ' · you' : ''}
             {away ? ' · offline' : live && game.liveTurn === s ? ' · to move' : ''}
+            {live && !away && view.ping[s] !== null ? ` · ping ${view.ping[s]}` : ''}
           </span>
         </div>
         <Clock ms={game.clocks[s]} active={view.running === s && !ended} label={NAMES[s]} />
@@ -401,7 +409,10 @@ function Playing({ game, view }: { game: Game; view: GameView }) {
             orientation={game.orientation}
             selected={game.selected}
             targets={game.targets}
-            interactive={game.canMove}
+            interactive={game.canMove || game.canPremove}
+            mover={game.view?.you ?? undefined}
+            premove={game.premove}
+            onCancelPremove={game.cancelPremove}
             pendingPromotion={game.pendingPromotion}
             onSelect={game.select}
             onMove={game.attemptMove}

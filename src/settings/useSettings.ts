@@ -11,6 +11,8 @@ export interface Settings {
   coords: boolean
   hints: boolean
   autoQueen: boolean
+  /** Online: queue a move during the opponent's turn; it plays the moment they move. */
+  premoves: boolean
   /** Pieces slide, kings topple, grades pop. Off: everything jumps into place. */
   animation: boolean
   /** Tint the two squares of the last move. */
@@ -20,7 +22,7 @@ export interface Settings {
 }
 
 const KEY = 'oukplay.settings.v1'
-export const DEFAULT_SETTINGS: Settings = { coords: true, hints: true, autoQueen: false, animation: true, lastMove: true, volume: 0.8 }
+export const DEFAULT_SETTINGS: Settings = { coords: true, hints: true, autoQueen: false, premoves: true, animation: true, lastMove: true, volume: 0.8 }
 const DEFAULT = DEFAULT_SETTINGS
 const listeners = new Set<() => void>()
 

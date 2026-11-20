@@ -1,7 +1,7 @@
 import { Chess } from 'chess.js'
 import type { WebSocket } from 'ws'
 import type { Identity } from './auth.ts'
-import { deleteGame, finishGame, insertGame, saveProgress, saveRatings, userById, type GameRow } from './db.ts'
+import { addChat, addRatingHistory, chatOf, deleteGame, finishGame, insertGame, saveProgress, saveRatings, userById, type GameRow } from './db.ts'
 import { PROVISIONAL_RD, update } from './glicko.ts'
 import {
   CHAT_MAX,
@@ -25,6 +25,10 @@ export interface Conn {
   watching: Set<string>
   lobby: boolean
   alive: boolean
+  /** Smoothed round trip to this tab (ms), from lag probes during games. */
+  rtt: number | null
+  /** The probe waiting for an answer. */
+  lagProbe: { n: number; at: number } | null
   send(msg: ServerMessage): void
 }
 
@@ -41,9 +45,20 @@ const FIRST_MOVE_MS = 30_000
 /** A player gone this long (in a game both have moved in) can be claimed against. */
 const CLAIM_MS = 30_000
 const CHAT_KEEP = 200
+/**
+ * Lag compensation. Each move gets back up to half the mover's round trip
+ * (at most LAG_MAX_MS) from a per-player bank. The bank refills a little with
+ * every move and is capped, so ordinary lag is smoothed out but nobody can
+ * claim unlimited time by faking a slow connection.
+ */
+const LAG_MAX_MS = 500
+const LAG_BANK_START = 1500
+const LAG_BANK_REFILL = 100
+const LAG_BANK_CAP = 3000
 const UCI_RE = /^[a-h][1-8][a-h][1-8][qrbn]?$/
 
 const other = (s: Side): Side => (s === 'w' ? 'b' : 'w')
+const roundOrNull = (n: number | null) => (n === null ? null : Math.round(n))
 
 export function playerInfo(identity: Identity, tc: OnlineTimeControl): PlayerInfo {
   if (identity.guest) return { id: identity.id, name: identity.name, guest: true, rating: null, provisional: false }
@@ -81,7 +96,10 @@ export class GameRoom {
   black: PlayerInfo | null = null
   chess = new Chess()
   moves: string[] = []
+  /** The mover's clock after each move. */
+  times: number[] = []
   clocks: Record<Side, number>
+  lagBank: Record<Side, number> = { w: LAG_BANK_START, b: LAG_BANK_START }
   /** When the side to move started thinking (wall clock). */
   turnStartedAt = 0
   firstMoveDeadline = 0
@@ -126,7 +144,10 @@ export class GameRoom {
       return null
     }
     room.moves = row.moves
+    // Games saved before clocks were stored: fill in with each side's latest clock.
+    room.times = row.times.length === row.moves.length ? row.times : row.moves.map((_, i) => (i % 2 === 0 ? row.clockW : row.clockB))
     room.clocks = { w: row.clockW, b: row.clockB }
+    room.chat = chatOf(row.id, CHAT_KEEP).map((c) => ({ from: c.name, side: c.side, text: c.text, at: c.at }))
     room.status = 'live'
     room.turnStartedAt = Date.now()
     room.firstMoveDeadline = Date.now() + FIRST_MOVE_MS
@@ -163,6 +184,7 @@ export class GameRoom {
       rated: this.rated,
       status: 'live',
       moves: [],
+      times: [],
       clockW: this.clocks.w,
       clockB: this.clocks.b,
       winner: null,
@@ -204,13 +226,32 @@ export class GameRoom {
     return c
   }
 
+  /** The running side's clock without the floor at zero (negative once it has run out). */
+  rawLeft(now = Date.now()): number {
+    return this.clocks[this.turn] - (now - this.turnStartedAt)
+  }
+
+  /** Round trip (ms) of the slowest tab this player has open on the game, or null. */
+  rttOf(side: Side): number | null {
+    const p = side === 'w' ? this.white : this.black
+    let worst: number | null = null
+    for (const c of this.watchers) if (p && c.identity.id === p.id && c.rtt !== null) worst = Math.max(worst ?? 0, c.rtt)
+    return worst
+  }
+
+  /** How much lag credit a move from `side` could get right now. */
+  lagCredit(side: Side, rtt: number | null): number {
+    return Math.round(Math.max(0, Math.min((rtt ?? 0) / 2, LAG_MAX_MS, this.lagBank[side])))
+  }
+
   /** One timer per room: the running clock's flag, or the first-move abort. */
   schedule() {
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
     if (this.status !== 'live') return
     const now = Date.now()
-    const ms = this.clockRunning ? this.currentClocks(now)[this.turn] : this.firstMoveDeadline - now
+    // A move may still be on its way: wait out the lag credit it could get before flagging.
+    const ms = this.clockRunning ? this.rawLeft(now) + this.lagCredit(this.turn, this.rttOf(this.turn)) : this.firstMoveDeadline - now
     this.timer = setTimeout(() => this.tick(), Math.max(0, ms) + 25)
   }
 
@@ -218,7 +259,7 @@ export class GameRoom {
     if (this.status !== 'live') return
     const now = Date.now()
     if (this.clockRunning) {
-      if (this.currentClocks(now)[this.turn] <= 0) this.flag(this.turn)
+      if (this.rawLeft(now) + this.lagCredit(this.turn, this.rttOf(this.turn)) <= 0) this.flag(this.turn)
       else this.schedule()
     } else if (now >= this.firstMoveDeadline) {
       // Whoever failed to make a first move: the game simply did not happen.
@@ -249,6 +290,7 @@ export class GameRoom {
       if (this.rated) result.ratingDiff = this.applyRatings(result.winner)
       finishGame(this.id, {
         moves: this.moves,
+        times: this.times,
         clockW: this.clocks.w,
         clockB: this.clocks.b,
         winner: result.winner,
@@ -276,6 +318,8 @@ export class GameRoom {
     bUser.ratings[speed] = bNew
     saveRatings(wUser.id, wUser.ratings)
     saveRatings(bUser.id, bUser.ratings)
+    addRatingHistory(wUser.id, speed, wNew, this.id)
+    addRatingHistory(bUser.id, speed, bNew, this.id)
     return { w: Math.round(wNew.rating) - Math.round(wOld.rating), b: Math.round(bNew.rating) - Math.round(bOld.rating) }
   }
 
@@ -292,11 +336,14 @@ export class GameRoom {
     if (typeof uci !== 'string' || !UCI_RE.test(uci)) return 'That is not a move.'
     const now = Date.now()
     if (this.clockRunning) {
-      const left = this.currentClocks(now)[side]
+      // Give back part of the network delay, from the bank, never more than the time actually used.
+      const credit = Math.min(this.lagCredit(side, conn.rtt), now - this.turnStartedAt)
+      const left = this.rawLeft(now) + credit
       if (left <= 0) {
         this.flag(side)
         return null
       }
+      this.lagBank[side] = Math.min(LAG_BANK_CAP, this.lagBank[side] - credit + LAG_BANK_REFILL)
       this.clocks[side] = left + this.tc.increment * 1000
     }
     try {
@@ -305,6 +352,7 @@ export class GameRoom {
       return 'That move is not legal.'
     }
     this.moves.push(uci)
+    this.times.push(this.clocks[side])
     this.turnStartedAt = now
     if (this.moves.length < 2) this.firstMoveDeadline = now + FIRST_MOVE_MS
     // Moving on is declining a draw that was offered to you.
@@ -317,7 +365,7 @@ export class GameRoom {
     else if (c.isThreefoldRepetition()) this.end({ winner: null, reason: 'repetition' })
     else if (c.isDrawByFiftyMoves()) this.end({ winner: null, reason: 'fifty-move' })
     else {
-      saveProgress(this.id, this.moves, this.clocks.w, this.clocks.b)
+      saveProgress(this.id, this.moves, this.times, this.clocks.w, this.clocks.b)
       this.schedule()
       this.broadcast()
     }
@@ -405,6 +453,8 @@ export class GameRoom {
       .slice(0, CHAT_MAX)
     if (!clean) return null
     const line: ChatLine = { from: this.player(side).name, side, text: clean, at: Date.now() }
+    // Kept with the game (aborted games leave nothing behind).
+    if (this.result?.reason !== 'aborted') addChat(this.id, { userId: conn.identity.id, name: line.from, side, text: clean, at: line.at })
     this.chat.push(line)
     if (this.chat.length > CHAT_KEEP) this.chat.shift()
     for (const c of this.watchers) c.send({ t: 'chat', id: this.id, line })
@@ -468,6 +518,7 @@ export class GameRoom {
       white: this.white,
       black: this.black,
       moves: this.moves,
+      times: this.times,
       clocks: this.status === 'live' ? this.currentClocks(now) : { ...this.clocks },
       running: this.clockRunning ? this.turn : null,
       firstMoveMs: this.status === 'live' && this.moves.length < 2 ? Math.max(0, this.firstMoveDeadline - now) : null,
@@ -476,6 +527,7 @@ export class GameRoom {
       rematchId: this.rematchId,
       result: this.result,
       connected: { w: this.isConnected('w'), b: this.isConnected('b') },
+      ping: { w: roundOrNull(this.rttOf('w')), b: roundOrNull(this.rttOf('b')) },
       claimInMs,
       spectators: this.spectatorCount(),
       you,
@@ -498,6 +550,7 @@ export function viewOfRow(row: GameRow, forId: string | null): GameView {
     white: { id: row.whiteId, name: row.whiteName, guest: row.whiteGuest, rating: row.whiteRating, provisional: false },
     black: { id: row.blackId, name: row.blackName, guest: row.blackGuest, rating: row.blackRating, provisional: false },
     moves: row.moves,
+    times: row.times,
     clocks: { w: row.clockW, b: row.clockB },
     running: null,
     firstMoveMs: null,
@@ -510,6 +563,7 @@ export function viewOfRow(row: GameRow, forId: string | null): GameView {
       ratingDiff: row.rated && row.whiteDiff !== null && row.blackDiff !== null ? { w: row.whiteDiff, b: row.blackDiff } : undefined,
     },
     connected: { w: false, b: false },
+    ping: { w: null, b: null },
     claimInMs: null,
     spectators: 0,
     you,

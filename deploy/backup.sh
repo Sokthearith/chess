@@ -8,3 +8,5 @@ docker compose exec -T app node -e "new (require('node:sqlite').DatabaseSync)('/
 docker compose cp "app:/data/$name" "backups/$name"
 docker compose exec -T app rm "/data/$name"
 echo "Saved deploy/backups/$name"
+# Keep two weeks of copies on the server. Copy them somewhere else now and then.
+find backups -name 'oukplay-*.db' -mtime +14 -delete

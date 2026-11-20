@@ -20,6 +20,7 @@ npm run dev:all    # game server + Vite, http://localhost:5173 (or `npm run dev`
 npm run build      # type-check (site and server) + production build into dist/
 npm start          # the production server: dist/ + API + WebSocket on PORT (8787)
 npm run check:online   # boots a throwaway server and plays real games against it
+npm run check:premove  # premove target squares for every piece
 ```
 
 ## Online play and deploying
@@ -30,8 +31,8 @@ Everything online runs in one Node process (`server/`, Node 22.18+ loads the Typ
 |---|---|
 | `server/index.ts` | HTTP, static files (brotli/gzip, immutable caching for `assets/`), the WebSocket upgrade, graceful shutdown |
 | `server/hub.ts` | Connections, the lobby, seeks and matchmaking (same clock and rated flag; rated seeks within a rating window that widens 25 points a second), challenges, rematches |
-| `server/game.ts` | One game room: moves, clocks, first-move abort, draws, resign, abandonment claims, chat, spectators |
-| `server/db.ts` | SQLite via Node's built-in `node:sqlite` (no native build): users, sessions, games |
+| `server/game.ts` | One game room: moves, clocks (with lag compensation), first-move abort, draws, resign, abandonment claims, chat, spectators |
+| `server/db.ts` | SQLite via Node's built-in `node:sqlite` (no native build): numbered schema migrations, users, sessions, games (with the clock after every move), rating history, chat (kept 30 days after a game) |
 | `server/auth.ts` | scrypt passwords, session cookies, signed guest cookies, rate limits |
 | `server/glicko.ts` | Glicko-2 ratings per speed |
 | `src/online/` | The browser side: the shared socket (`connection.ts`), account calls (`api.ts`), the game hook (`useOnlineGame.ts`) |
@@ -43,7 +44,11 @@ Everything online runs in one Node process (`server/`, Node 22.18+ loads the Typ
 - Serve it over **HTTPS**: in production the cookies are `Secure`. Set `SESSION_SECRET` to a long random string (otherwise one is generated and kept in the database). Behind a proxy or load balancer set `TRUST_PROXY=1` so rate limits see real addresses; the proxy must pass WebSocket upgrades on `/ws`.
 - Other settings: `PORT`, `HOST`, `DIST_DIR`, `ALLOWED_ORIGINS` (comma-separated, only if the site is served from a different origin than the server). Health check: `GET /healthz`.
 
-Not built yet: premoves, password reset (there is no email), reporting/blocking and moderation, anti-cheat, and lag compensation on the clock.
+**Schema changes** go in `MIGRATIONS` in `server/db.ts` as a new entry (never edit one that has shipped). On boot the server copies the database to `DATA_DIR/backups/pre-vN-….db`, then runs the new steps in a transaction.
+
+**Lag compensation.** During a game the server probes each player's round trip every 3 s. Each move gets back up to half of it (at most 500 ms) from a per-player bank that starts at 1.5 s, refills 100 ms a move and is capped at 3 s; the flag waits out the same credit. **Premoves** are client-side only (`src/game/premove.ts`, `useOnlineGame.ts`): the queued move is sent the moment the opponent's move arrives, and dropped if it is no longer legal.
+
+Not built yet: password reset (there is no email), reporting/blocking and moderation, anti-cheat. Planned next: recovery codes instead of email resets, blocks/reports and a moderator page, on-demand engine checks for reported players, leaderboards and rating graphs (the rating history is already being saved), and Ouk Chatrang. Details and planned tables are in [`ROADMAP.md`](ROADMAP.md).
 
 ## Layout of the code
 

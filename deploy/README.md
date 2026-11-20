@@ -70,7 +70,7 @@ Nothing to open on your router; Cloudflare gives the site HTTPS.
 | | |
 |---|---|
 | Update to the latest code on GitHub | `sudo ./update.sh` (live games are saved and carry on) |
-| Back up the database | `sudo ./backup.sh` → `deploy/backups/` (copy these off the machine now and then) |
+| Back up the database | Happens every night at 03:30 (set up by `setup.sh`, 14 days kept). By hand: `sudo ./backup.sh` → `deploy/backups/`. Copy these off the machine now and then |
 | See the logs | `sudo docker compose logs -f app` |
 | Restart | `sudo docker compose restart app` |
 | Is it healthy? | `curl https://yourdomain.com/healthz` |
