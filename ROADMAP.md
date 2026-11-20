@@ -1,6 +1,6 @@
 # Oukplay roadmap: what to add next, and how to store it
 
-**Status (2026-11-20):** Phase 0 and Phase 1 are done (migrations, per-move clocks, rating history, saved chat, nightly backups, premoves, lag compensation, ping, `%clk` in PGNs). Phases 2–5 are next, each to be agreed before it is built.
+**Status (2026-11-20):** Phases 0–2 are done: migrations, per-move clocks, rating history, saved chat, nightly backups, premoves, lag compensation, ping, `%clk` in PGNs, recovery codes, password changes and the account page. Phases 3–5 are next, each to be agreed before it is built.
 
 ## Context
 Online play works: pairing, friend links, lobby, watching, chat, accounts, Glicko ratings. It runs as one Node server with one SQLite file (`server/db.ts`). Before real players arrive, these are missing:
@@ -106,7 +106,7 @@ The plan has 6 phases, in order. Phase 0 and Phase 1 are the first job; later ph
 
 ---
 
-## Phase 2: Account safety (no email needed)
+## Phase 2: Account safety (no email needed) ✅ done
 
 **Recovery code instead of email:**
 - At sign-up, show a one-time 12-character recovery code (with a "Copy" button and a confirm checkbox).

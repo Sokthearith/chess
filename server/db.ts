@@ -92,6 +92,10 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX chat_lines_game ON chat_lines(game_id, at);
   `,
+  // 3: recovery codes (there is no email, so this is how a forgotten password is reset).
+  `
+  ALTER TABLE users ADD COLUMN recovery_hash TEXT;
+  `,
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length
@@ -156,6 +160,8 @@ export interface UserRow {
   pass: string
   ratings: Ratings
   createdAt: number
+  /** scrypt hash of the account's recovery code, or null if it never made one. */
+  recoveryHash: string | null
 }
 
 function freshRatings(): Ratings {
@@ -171,6 +177,7 @@ function toUser(row: Record<string, unknown> | undefined): UserRow | null {
     pass: String(row.pass),
     ratings: { ...freshRatings(), ...stored },
     createdAt: Number(row.created_at),
+    recoveryHash: row.recovery_hash ? String(row.recovery_hash) : null,
   }
 }
 
@@ -201,6 +208,14 @@ export function userByName(username: string): UserRow | null {
 
 export function saveRatings(id: string, ratings: Ratings) {
   db.prepare('UPDATE users SET ratings = ? WHERE id = ?').run(JSON.stringify(ratings), id)
+}
+
+export function setPassword(id: string, passHash: string) {
+  db.prepare('UPDATE users SET pass = ? WHERE id = ?').run(passHash, id)
+}
+
+export function setRecovery(id: string, recoveryHash: string) {
+  db.prepare('UPDATE users SET recovery_hash = ? WHERE id = ?').run(recoveryHash, id)
 }
 
 /** One point on a player's rating graph, written after every rated game. */
@@ -242,6 +257,11 @@ export function sessionUser(tokenHash: string): string | null {
 
 export function deleteSession(tokenHash: string) {
   db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash)
+}
+
+/** Sign a user out everywhere, except (optionally) the session making the request. */
+export function deleteSessionsOf(userId: string, keepTokenHash?: string) {
+  db.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').run(userId, keepTokenHash ?? '')
 }
 
 export function purgeSessions() {

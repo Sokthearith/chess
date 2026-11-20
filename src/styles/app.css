@@ -1112,3 +1112,11 @@ button.chip:not(.chip--on) { color: inherit; }
    ordinary mark colour. Dashed means "not played yet"; no new colour. */
 .sq--premove::before { box-shadow: none; border: 3px dashed var(--mark); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--mark) 26%, transparent) 0 5px, transparent 5px 11px); }
 .sq--dark.sq--premove::before { outline: 1px solid var(--board-light); outline-offset: -1px; }
+
+/* ---------- recovery codes and the account page (added 2026-11-20) ---------- */
+.recovery { display: grid; gap: var(--space-sm); border: 2px solid var(--color-ink); padding: var(--space-md); }
+.recovery__code { font-size: clamp(1.75rem, 7vw, 2.75rem); line-height: 1; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; user-select: all; -webkit-user-select: all; overflow-wrap: anywhere; margin: 0; }
+.account__section { display: grid; gap: var(--space-sm); border-top: 1px solid var(--color-rule); padding-top: var(--space-md); }
+.account__section h2 { font-size: var(--text-2xl); }
+.account__link { appearance: none; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; justify-self: start; min-height: 32px; }
+.account__link:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }

@@ -1,5 +1,5 @@
 import { reconnect } from './connection'
-import type { Profile, UserInfo } from './protocol'
+import type { Profile, UserInfo, WithRecoveryCode } from './protocol'
 
 /** The account and profile endpoints. Every call is same-origin with the session cookie. */
 
@@ -20,10 +20,30 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
   return data as T
 }
 
-export async function register(username: string, password: string): Promise<UserInfo> {
-  const user = await call<UserInfo>('/api/register', { username, password })
+/** A new account, signed in, and its recovery code (shown once). */
+export async function register(username: string, password: string): Promise<WithRecoveryCode> {
+  const out = await call<WithRecoveryCode>('/api/register', { username, password })
   reconnect()
-  return user
+  return out
+}
+
+/** Forgotten password: sets a new one, signs out everywhere else, and returns a new recovery code. */
+export async function recover(username: string, code: string, password: string): Promise<WithRecoveryCode> {
+  const out = await call<WithRecoveryCode>('/api/recover', { username, code, password })
+  reconnect()
+  return out
+}
+
+/** Signed in: change the password. Every other device is signed out. */
+export async function changePassword(current: string, password: string): Promise<void> {
+  await call('/api/password', { current, password })
+}
+
+/** Signed in: replace the recovery code. The old one stops working. */
+export async function newRecoveryCode(current: string): Promise<string> {
+  const out = await call<{ recoveryCode: string }>('/api/recovery-code', { current })
+  reconnect()
+  return out.recoveryCode
 }
 
 export async function login(username: string, password: string): Promise<UserInfo> {

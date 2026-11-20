@@ -67,6 +67,14 @@ export interface UserInfo {
   name: string
   guest: boolean
   ratings: Record<Speed, RatingInfo> | null
+  /** Your own account only: whether a recovery code is set. */
+  recovery?: boolean
+}
+
+/** Sign-up and password recovery answer with the account and its new recovery code (shown once). */
+export interface WithRecoveryCode {
+  user: UserInfo
+  recoveryCode: string
 }
 
 /** A player as shown at the board or in a list. */

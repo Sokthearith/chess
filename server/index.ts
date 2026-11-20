@@ -17,21 +17,35 @@ import {
   hashPassword,
   identify,
   newGuest,
+  newRecoveryCode,
+  normalizeCode,
+  sessionHashOf,
   startSession,
   type Identity,
 } from './auth.ts'
-import { createUser, gamesOf, purgeSessions, recordOf, saveProgress, userByName } from './db.ts'
+import { createUser, deleteSessionsOf, gamesOf, purgeSessions, recordOf, saveProgress, setPassword, setRecovery, userById, userByName } from './db.ts'
 import { Hub, userInfo } from './hub.ts'
-import { PASSWORD_MAX, PASSWORD_MIN, USERNAME_RE, type EndReason, type GameSummary, type Profile } from '../src/online/protocol.ts'
+import {
+  PASSWORD_MAX,
+  PASSWORD_MIN,
+  USERNAME_RE,
+  type EndReason,
+  type GameSummary,
+  type Profile,
+  type WithRecoveryCode,
+} from '../src/online/protocol.ts'
 
 const PORT = Number(process.env.PORT ?? 8787)
 const HOST = process.env.HOST ?? '0.0.0.0'
 const DIST = resolve(process.env.DIST_DIR ?? 'dist')
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+const PASSWORD_RULE = `Passwords are ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.`
+const passwordOk = (p: string) => p.length >= PASSWORD_MIN && p.length <= PASSWORD_MAX
 const RESERVED = /^(guest|admin|administrator|mod|moderator|system|oukplay|anonymous|stockfish|support|root)/i
 
 const hub = new Hub()
-const authLimit = new RateLimiter(10, 10 / 60)
+// Sign-in, sign-up and recovery attempts per address. AUTH_BURST raises it for the test script only.
+const authLimit = new RateLimiter(Number(process.env.AUTH_BURST ?? 10), 10 / 60)
 const connectLimit = new RateLimiter(30, 0.5)
 
 /* ----------------------------------------------------------------- helpers */
@@ -97,16 +111,62 @@ async function api(req: IncomingMessage, res: ServerResponse, path: string) {
     if (path === '/api/register') {
       if (!USERNAME_RE.test(username)) return json(res, 400, { error: 'Usernames are 3 to 20 letters, digits, - or _, starting with a letter or digit.' })
       if (RESERVED.test(username)) return json(res, 400, { error: 'That username is reserved. Pick another.' })
-      if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) return json(res, 400, { error: `Passwords are ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.` })
+      if (!passwordOk(password)) return json(res, 400, { error: PASSWORD_RULE })
       const user = createUser(username, await hashPassword(password))
       if (!user) return json(res, 409, { error: 'That username is taken.' })
+      const recoveryCode = newRecoveryCode()
+      setRecovery(user.id, await hashPassword(normalizeCode(recoveryCode)))
       const who: Identity = { id: user.id, name: user.username, guest: false }
-      return json(res, 201, userInfo(who), { 'Set-Cookie': startSession(user.id) })
+      const out: WithRecoveryCode = { user: userInfo(who), recoveryCode }
+      return json(res, 201, out, { 'Set-Cookie': startSession(user.id) })
     }
     const user = username && password.length <= PASSWORD_MAX ? userByName(username) : null
     const ok = await checkPassword(password, user?.pass ?? DUMMY_HASH)
     if (!user || !ok) return json(res, 401, { error: 'Wrong username or password.' })
     return json(res, 200, userInfo({ id: user.id, name: user.username, guest: false }), { 'Set-Cookie': startSession(user.id) })
+  }
+
+  // Forgotten password: username + recovery code + a new password. Signs out everywhere, issues a new code.
+  if (path === '/api/recover' && method === 'POST') {
+    if (!authLimit.take(clientIp(req))) return json(res, 429, { error: 'Too many attempts. Wait a minute and try again.' })
+    const b = await body(req)
+    const username = typeof b?.username === 'string' ? b.username.trim() : ''
+    const code = typeof b?.code === 'string' ? normalizeCode(b.code) : ''
+    const password = typeof b?.password === 'string' ? b.password : ''
+    if (!passwordOk(password)) return json(res, 400, { error: PASSWORD_RULE })
+    const user = username ? userByName(username) : null
+    const ok = await checkPassword(code, user?.recoveryHash ?? DUMMY_HASH)
+    if (!user || !user.recoveryHash || !ok) return json(res, 401, { error: 'That username and recovery code do not match.' })
+    setPassword(user.id, await hashPassword(password))
+    const recoveryCode = newRecoveryCode()
+    setRecovery(user.id, await hashPassword(normalizeCode(recoveryCode)))
+    deleteSessionsOf(user.id)
+    hub.kickUser(user.id)
+    const out: WithRecoveryCode = { user: userInfo({ id: user.id, name: user.username, guest: false }), recoveryCode }
+    return json(res, 200, out, { 'Set-Cookie': startSession(user.id) })
+  }
+
+  // Signed in: change the password (other sessions end), or make a new recovery code. Both need the current password.
+  if ((path === '/api/password' || path === '/api/recovery-code') && method === 'POST') {
+    if (!authLimit.take(clientIp(req))) return json(res, 429, { error: 'Too many attempts. Wait a minute and try again.' })
+    const who = identify(req)
+    const user = who && !who.guest ? userById(who.id) : null
+    if (!user) return json(res, 401, { error: 'Sign in first.' })
+    const b = await body(req)
+    const current = typeof b?.current === 'string' ? b.current : ''
+    if (current.length > PASSWORD_MAX || !(await checkPassword(current, user.pass))) return json(res, 401, { error: 'Your current password is not right.' })
+    if (path === '/api/password') {
+      const next = typeof b?.password === 'string' ? b.password : ''
+      if (!passwordOk(next)) return json(res, 400, { error: PASSWORD_RULE })
+      setPassword(user.id, await hashPassword(next))
+      const keep = sessionHashOf(req)
+      deleteSessionsOf(user.id, keep)
+      hub.kickUser(user.id, keep)
+      return json(res, 200, { ok: true })
+    }
+    const recoveryCode = newRecoveryCode()
+    setRecovery(user.id, await hashPassword(normalizeCode(recoveryCode)))
+    return json(res, 200, { recoveryCode })
   }
 
   if (path === '/api/logout' && method === 'POST') {

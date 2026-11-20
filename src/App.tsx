@@ -20,6 +20,7 @@ import { Lobby } from './pages/online/Lobby'
 import { OnlineGame } from './pages/online/OnlineGame'
 import { Login } from './pages/online/Login'
 import { Profile } from './pages/online/Profile'
+import { Account } from './pages/online/Account'
 import { OnlineEvents } from './online/OnlineEvents'
 
 function TitleAndScroll() {
@@ -34,6 +35,8 @@ function TitleAndScroll() {
             ? 'Online game'
             : pathname === '/login'
               ? 'Sign in'
+              : pathname === '/account'
+                ? 'Your account'
               : pathname.startsWith('/u/')
                 ? decodeURIComponent(pathname.slice(3))
                 : pathname.startsWith('/games')
@@ -87,6 +90,7 @@ export default function App() {
         <Route path="/game/:id" element={<OnlineGame />} />
         <Route path="/login" element={<Login />} />
         <Route path="/u/:name" element={<Profile />} />
+        <Route path="/account" element={<Account />} />
         <Route path="/games" element={<Games />} />
         <Route path="/games/:username" element={<Games />} />
         <Route path="/analysis" element={<Analysis />} />

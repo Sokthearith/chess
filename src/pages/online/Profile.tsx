@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Footer } from '../../components/Footer'
 import { Nav } from '../../components/Nav'
-import { logout, profile as fetchProfile } from '../../online/api'
+import { profile as fetchProfile } from '../../online/api'
 import { useOnline } from '../../online/connection'
 import { REASON_WORDS, SPEEDS, type Profile as ProfileData } from '../../online/protocol'
 
@@ -15,7 +15,6 @@ function dateOf(ms: number) {
 
 export function Profile() {
   const { name = '' } = useParams()
-  const navigate = useNavigate()
   const { user } = useOnline()
   const [data, setData] = useState<ProfileData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -66,18 +65,16 @@ export function Profile() {
                     </Link>
                   ) : null}
                   {mine ? (
-                    <button
-                      type="button"
-                      className="btn btn--quiet btn--sm"
-                      onClick={async () => {
-                        await logout().catch(() => {})
-                        navigate('/online')
-                      }}
-                    >
-                      Sign out
-                    </button>
+                    <Link className="btn btn--quiet btn--sm" to="/account">
+                      Account
+                    </Link>
                   ) : null}
                 </div>
+                {mine && user && user.recovery === false ? (
+                  <p className="online__banner">
+                    You have no recovery code, so a forgotten password would lose this account. <Link to="/account">Make one now</Link>
+                  </p>
+                ) : null}
               </div>
               <div className="stats">
                 {SPEEDS.map((s) => {

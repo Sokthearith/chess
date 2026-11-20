@@ -50,7 +50,7 @@ export function userInfo(identity: Identity): UserInfo {
       return [s, { rating: Math.round(r.rating), rd: Math.round(r.rd), games: r.games, provisional: r.rd > PROVISIONAL_RD }]
     }),
   ) as UserInfo['ratings']
-  return { id: user.id, name: user.username, guest: false, ratings }
+  return { id: user.id, name: user.username, guest: false, ratings, recovery: !!user.recoveryHash }
 }
 
 export class Hub implements RoomHost {
@@ -167,6 +167,13 @@ export class Hub implements RoomHost {
     const sample = Date.now() - probe.at
     if (sample > LAG_SAMPLE_MAX) return
     conn.rtt = conn.rtt === null ? sample : conn.rtt * 0.75 + sample * 0.25
+  }
+
+  /** Close a user's sockets (after a password change or reset), except those on the session to keep. */
+  kickUser(userId: string, keepSession?: string) {
+    for (const c of this.conns) {
+      if (c.identity.id === userId && (!keepSession || c.identity.session !== keepSession)) c.ws.close(4001, 'Signed out')
+    }
   }
 
   isOnline(userId: string): boolean {

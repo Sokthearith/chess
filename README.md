@@ -25,7 +25,7 @@ npm run check:premove  # premove target squares for every piece
 
 ## Online play and deploying
 
-Everything online runs in one Node process (`server/`, Node 22.18+ loads the TypeScript directly): it serves `dist/`, a small JSON API (`/api/me`, `/api/register`, `/api/login`, `/api/logout`, `/api/users/:name`) and the game WebSocket at `/ws`. The protocol is typed once in `src/online/protocol.ts` and shared by both sides. Games are server-authoritative: chess.js on the server validates every move and owns the clocks; the browser only shows its own move early.
+Everything online runs in one Node process (`server/`, Node 22.18+ loads the TypeScript directly): it serves `dist/`, a small JSON API (`/api/me`, `/api/register`, `/api/login`, `/api/logout`, `/api/recover`, `/api/password`, `/api/recovery-code`, `/api/users/:name`) and the game WebSocket at `/ws`. The protocol is typed once in `src/online/protocol.ts` and shared by both sides. Games are server-authoritative: chess.js on the server validates every move and owns the clocks; the browser only shows its own move early.
 
 | File | Owns |
 |---|---|
@@ -48,7 +48,9 @@ Everything online runs in one Node process (`server/`, Node 22.18+ loads the Typ
 
 **Lag compensation.** During a game the server probes each player's round trip every 3 s. Each move gets back up to half of it (at most 500 ms) from a per-player bank that starts at 1.5 s, refills 100 ms a move and is capped at 3 s; the flag waits out the same credit. **Premoves** are client-side only (`src/game/premove.ts`, `useOnlineGame.ts`): the queued move is sent the moment the opponent's move arrives, and dropped if it is no longer legal.
 
-Not built yet: password reset (there is no email), reporting/blocking and moderation, anti-cheat. Planned next: recovery codes instead of email resets, blocks/reports and a moderator page, on-demand engine checks for reported players, leaderboards and rating graphs (the rating history is already being saved), and Ouk Chatrang. Details and planned tables are in [`ROADMAP.md`](ROADMAP.md).
+**Password reset without email.** Sign-up hands out a one-time recovery code (stored as an scrypt hash, like the password). "Forgot your password?" on `/login` takes the username, the code and a new password; it signs out every session, closes the account's sockets and issues a new code. `/account` changes the password (other devices are signed out) or makes a new code.
+
+Not built yet: reporting/blocking and moderation, anti-cheat. Planned next: blocks/reports and a moderator page, on-demand engine checks for reported players, leaderboards and rating graphs (the rating history is already being saved), and Ouk Chatrang. Details and planned tables are in [`ROADMAP.md`](ROADMAP.md).
 
 ## Layout of the code
 

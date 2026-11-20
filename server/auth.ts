@@ -6,6 +6,8 @@ export interface Identity {
   id: string
   name: string
   guest: boolean
+  /** Signed-in users: the hash of the session token this request or socket came with. */
+  session?: string
 }
 
 export const SESSION_COOKIE = 'op_session'
@@ -34,6 +36,24 @@ export async function checkPassword(password: string, stored: string): Promise<b
   const key = await scryptAsync(password, Buffer.from(saltB64, 'base64'))
   const want = Buffer.from(keyB64, 'base64')
   return want.length === key.length && timingSafeEqual(want, key)
+}
+
+/**
+ * Recovery codes: 12 characters from an alphabet without look-alikes
+ * (no 0/O, 1/I/L), shown as XXXX-XXXX-XXXX. About 59 bits, stored as an
+ * scrypt hash like a password, and tried only under the login rate limit.
+ */
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+
+export function newRecoveryCode(): string {
+  let s = ''
+  for (let i = 0; i < 12; i++) s += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]
+  return `${s.slice(0, 4)}-${s.slice(4, 8)}-${s.slice(8)}`
+}
+
+/** What the player typed, in the form that was hashed: capitals, no dashes or spaces. */
+export function normalizeCode(typed: string): string {
+  return typed.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 32)
 }
 
 /** A hash to compare against when the username does not exist, so timing does not reveal it. */
@@ -65,6 +85,12 @@ const sha256 = (s: string) => createHash('sha256').update(s).digest('hex')
 const sign = (s: string) => createHmac('sha256', secret()).update(s).digest('base64url')
 
 /* ---------------------------------------------------------------- sessions */
+
+/** The hash of this request's session token, if it has one. */
+export function sessionHashOf(req: IncomingMessage): string | undefined {
+  const token = parseCookies(req)[SESSION_COOKIE]
+  return token ? sha256(token) : undefined
+}
 
 /** Start a session; returns the Set-Cookie header. */
 export function startSession(userId: string): string {
@@ -105,7 +131,7 @@ export function identify(req: IncomingMessage): Identity | null {
   if (token) {
     const userId = sessionUser(sha256(token))
     const user = userId ? userById(userId) : null
-    if (user) return { id: user.id, name: user.username, guest: false }
+    if (user) return { id: user.id, name: user.username, guest: false, session: sha256(token) }
   }
   return guestFrom(cookies[GUEST_COOKIE])
 }

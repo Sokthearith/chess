@@ -23,7 +23,7 @@ let failures = 0
 
 function startServer(dir = dataDir): Promise<void> {
   server = spawn(process.execPath, ['server/index.ts'], {
-    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', DATA_DIR: dir, NODE_ENV: 'test' },
+    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', DATA_DIR: dir, NODE_ENV: 'test', AUTH_BURST: '100' },
     stdio: ['ignore', 'pipe', 'inherit'],
   })
   return new Promise((res, rej) => {
@@ -175,7 +175,7 @@ async function main() {
   await stopServer()
   const migrated = new DatabaseSync(join(oldDir, 'oukplay.db'), { readOnly: true })
   const version = migrated.prepare(`SELECT value FROM meta WHERE key = 'schema_version'`).get() as { value: string } | undefined
-  check(version?.value === '2', 'the schema version is recorded')
+  check(Number(version?.value) >= 3, `the schema version is recorded (${version?.value})`)
   migrated.close()
   const backups = existsSync(join(oldDir, 'backups')) ? readdirSync(join(oldDir, 'backups')) : []
   check(backups.some((f) => f.startsWith('pre-v2-')), 'a backup is taken before migrating')
@@ -225,6 +225,9 @@ async function main() {
   const bob = new Client()
   const reg = await alice.http('/api/register', { method: 'POST', body: { username: 'alice_test', password: 'correct horse' } })
   check(reg.status === 201, 'register')
+  const regCode = String(reg.body.recoveryCode ?? '')
+  check(/^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/.test(regCode), `sign-up hands out a recovery code (${regCode})`)
+  check((reg.body.user as UserInfo | undefined)?.recovery === true, 'the account knows it has a recovery code')
   check((await bob.http('/api/register', { method: 'POST', body: { username: 'ALICE_test', password: 'whatever123' } })).status === 409, 'usernames are unique ignoring case')
   check((await bob.http('/api/register', { method: 'POST', body: { username: 'guest99', password: 'whatever123' } })).status === 400, 'guest-like usernames are reserved')
   check((await bob.http('/api/register', { method: 'POST', body: { username: 'bob_test', password: 'short' } })).status === 400, 'short passwords are refused')
@@ -260,6 +263,43 @@ async function main() {
   const winnerName = r.white === alice ? 'alice_test' : 'bob_test'
   const prof = (await alice.http(`/api/users/${winnerName}`)).body as unknown as Profile
   check(prof.games?.length === 1 && prof.record.win === 1 && prof.ratings.blitz.rating > 1500, 'the profile shows the game and new blitz rating')
+
+  console.log('recovery codes and passwords')
+  const carol = new Client()
+  const carolReg = await carol.http('/api/register', { method: 'POST', body: { username: 'carol_test', password: 'first password' } })
+  const carolCode = String(carolReg.body.recoveryCode)
+  await carol.connect()
+  const carolClosed = new Promise<number>((res) => carol.ws!.on('close', (c) => res(c)))
+  const thief = new Client()
+  check(
+    (await thief.http('/api/recover', { method: 'POST', body: { username: 'carol_test', code: 'AAAA-BBBB-CCCC', password: 'new password 1' } })).status === 401,
+    'a wrong recovery code is refused',
+  )
+  const typed = carolCode.toLowerCase().replace(/-/g, ' ')
+  const rec = await thief.http('/api/recover', { method: 'POST', body: { username: 'CAROL_TEST', code: typed, password: 'new password 1' } })
+  const newCode = String(rec.body.recoveryCode ?? '')
+  check(rec.status === 200 && newCode && newCode !== carolCode, 'the code resets the password, typed in any case and spacing, and a new code is issued')
+  check(!(await thief.http('/api/me')).body.guest, 'the reset signs you in')
+  check((await Promise.race([carolClosed, sleep(2000).then(() => -1)])) === 4001, "the account's open sockets are closed")
+  check((await carol.http('/api/me')).body.guest === true, 'every other session is signed out')
+  check(
+    (await new Client().http('/api/recover', { method: 'POST', body: { username: 'carol_test', code: carolCode, password: 'new password 2' } })).status === 401,
+    'a used recovery code stops working',
+  )
+  const laptop = new Client()
+  check((await laptop.http('/api/login', { method: 'POST', body: { username: 'carol_test', password: 'new password 1' } })).status === 200, 'the new password signs in')
+  check((await thief.http('/api/password', { method: 'POST', body: { current: 'wrong', password: 'new password 3' } })).status === 401, 'changing the password needs the current one')
+  check((await thief.http('/api/password', { method: 'POST', body: { current: 'new password 1', password: 'new password 3' } })).status === 200, 'change the password')
+  check((await thief.http('/api/me')).body.guest === false, 'the session that changed it stays signed in')
+  check((await laptop.http('/api/me')).body.guest === true, 'other sessions are signed out by a password change')
+  check((await thief.http('/api/recovery-code', { method: 'POST', body: { current: 'nope' } })).status === 401, 'a new recovery code needs the current password')
+  const again = await thief.http('/api/recovery-code', { method: 'POST', body: { current: 'new password 3' } })
+  check(again.status === 200 && String(again.body.recoveryCode) !== newCode, 'make a new recovery code')
+  check(
+    (await new Client().http('/api/recover', { method: 'POST', body: { username: 'carol_test', code: newCode, password: 'new password 4' } })).status === 401,
+    'the replaced code stops working',
+  )
+  check((await new Client().http('/api/password', { method: 'POST', body: { current: 'x', password: 'new password 5' } })).status === 401, 'guests have no password to change')
 
   console.log('challenge links and spectators')
   alice.send({ t: 'challenge', tc: '10+0', rated: false, color: 'w' })

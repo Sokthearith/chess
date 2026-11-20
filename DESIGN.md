@@ -429,3 +429,19 @@ The site is called **Oukplay** (after *ouk*, Cambodian chess); it was Counterpla
 - A board option in the theme panel, **Premoves** (on by default), next to Auto-queen.
 
 **Ping.** The player strip's small mono line adds `· ping 84` for each connected player during a live game. It's quiet, mute text, and never coloured: a bad connection is information, not an alarm.
+
+## 17. Recovery codes and the account page (added 2026-11-20)
+
+There is no email on Oukplay, so a **recovery code** is the only way back into an account after a forgotten password. Its screens are plain and serious; no celebration.
+
+- **The code card** (`src/pages/online/RecoveryCode.tsx`) has:
+  - a 2px ink frame, with a mono label "Your recovery code"
+  - the code set large in the display face (`XXXX-XXXX-XXXX`, selectable in one tap)
+  - one paragraph saying why it matters
+  - **Copy** and **Save as a file** buttons
+  - a checkbox "I have saved my recovery code"
+  - the main button, disabled until the box is ticked
+- It appears right after sign-up ("Account made"), after a reset ("Password changed"), and on the account page when a new code is made. A code is shown once and never again.
+- **Sign-in page:** a "Forgot your password?" text link under the form switches it to *Reset your password*, with username, recovery code and new password. Codes are accepted in any case and with or without dashes or spaces. A wrong code gets one plain message: "That username and recovery code do not match." The page also says honestly what happens if the code is lost too.
+- **`/account`** ("Your account") is one column of sections divided by rules: Recovery code, Change password, Sign out. Each action asks for the current password. Changing the password signs out every other device, and the page says so before you do it.
+- **Profile:** your own profile shows an **Account** button (in place of the old Sign out). If you have no recovery code, an ink-framed `online__banner` says so and links to `/account`. No red: it's a warning to act on, not an error.
