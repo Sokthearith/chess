@@ -1,0 +1,33 @@
+[
+ {
+  "shape": "Poster Sheet",
+  "theme": "brutal",
+  "axes": "light/display-condensed/chromatic-red",
+  "hero": "Poster",
+  "nav": "edge-aligned, wordmark and one action",
+  "footer": "colophon",
+  "imagery": "the product, built live (the board itself)",
+  "photos": [],
+  "entry": "headline",
+  "fingerprint": "poster/left/condensed-caps/mono-corners/live-board/ink-band",
+  "sections": [
+   "Hero (split king)",
+   "Showcase (live board)",
+   "Rows (rules, clock, engine)",
+   "Statement",
+   "Band (play)",
+   "Footer"
+  ],
+  "signature": "the split light/dark king beside the headline",
+  "waived": [
+   "64",
+   "80",
+   "22",
+   "39b",
+   "44c"
+  ],
+  "prompt": "artistic chess website, Swiss brutalist editorial poster, paper cream ink and one red",
+  "date": "2026-11-01",
+  "mode": "build"
+ }
+]

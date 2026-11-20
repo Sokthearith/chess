@@ -1,0 +1,8 @@
+node_modules
+dist
+data
+.hallmark
+.impeccable
+public/engine
+.env.local
+*.log

@@ -1,0 +1,11 @@
+node_modules
+dist
+.hallmark/shots
+public/engine
+data
+.env.local
+.env.*.local
+*.log
+*.db
+*.db-wal
+*.db-shm
