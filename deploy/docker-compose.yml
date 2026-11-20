@@ -1,4 +1,4 @@
-# Counterplay in production: the app, plus either Caddy (HTTPS on a server
+# Oukplay in production: the app, plus either Caddy (HTTPS on a server
 # with a public IP) or Cloudflare Tunnel (no open ports, e.g. a home PC).
 # Pick one with COMPOSE_PROFILES in deploy/.env: "https" or "tunnel".
 services:
@@ -12,7 +12,7 @@ services:
       TRUST_PROXY: "1"
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in deploy/.env}
     volumes:
-      - counterplay-data:/data
+      - oukplay-data:/data
     stop_grace_period: 10s
 
   caddy:
@@ -41,6 +41,6 @@ services:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
 
 volumes:
-  counterplay-data:
+  oukplay-data:
   caddy-data:
   caddy-config:

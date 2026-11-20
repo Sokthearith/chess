@@ -1,4 +1,4 @@
-# Counterplay: the built site and the online game server in one small image.
+# Oukplay: the built site and the online game server in one small image.
 FROM node:24-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

@@ -1,4 +1,4 @@
-# Deploying Counterplay
+# Deploying Oukplay
 
 Two free ways to put the site online with your own domain (for example the free one from Name.com in the GitHub Student Pack). Both run the same thing: the app in Docker, with its database on a disk that survives restarts.
 
@@ -65,7 +65,7 @@ Nothing to open on your router; Cloudflare gives the site HTTPS.
 
 ---
 
-## Everyday commands (run in `/opt/counterplay/deploy` on the server, or `chess/deploy` on your PC)
+## Everyday commands (run in `/opt/oukplay/deploy` on the server, or `chess/deploy` on your PC)
 
 | | |
 |---|---|

@@ -8,8 +8,8 @@ export interface Identity {
   guest: boolean
 }
 
-export const SESSION_COOKIE = 'cp_session'
-export const GUEST_COOKIE = 'cp_guest'
+export const SESSION_COOKIE = 'op_session'
+export const GUEST_COOKIE = 'op_guest'
 const SESSION_DAYS = 30
 const SECURE = process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== '0'
 

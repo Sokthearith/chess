@@ -18,7 +18,7 @@ export interface SavedGame {
   savedAt: number
 }
 
-const KEY = 'counterplay.saved.v1'
+const KEY = 'oukplay.saved.v1'
 const listeners = new Set<() => void>()
 let cache: SavedGame[] | null = null
 

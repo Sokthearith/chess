@@ -26,7 +26,7 @@ export type SoundKind =
   | 'blunder'
   | 'done'
 
-const STORAGE_KEY = 'counterplay.sound'
+const STORAGE_KEY = 'oukplay.sound'
 
 let ctx: AudioContext | null = null
 let master: GainNode | null = null

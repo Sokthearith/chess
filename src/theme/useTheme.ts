@@ -6,7 +6,7 @@ import { DEFAULT_THEME, THEMES, themeById, type Theme, type ThemeId } from './th
  * themes.css switches at once; index.html sets the attribute before first
  * paint from the same localStorage key, so a reload never flashes the default.
  */
-const KEY = 'counterplay.theme'
+const KEY = 'oukplay.theme'
 const listeners = new Set<() => void>()
 
 function read(): ThemeId {

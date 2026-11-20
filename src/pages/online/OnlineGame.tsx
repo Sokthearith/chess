@@ -54,7 +54,7 @@ function pgnOf(view: GameView, history: MoveRecord[]): string {
   const tc = timeControl(view.tc)
   const moves = history.map((m, i) => (i % 2 === 0 ? `${i / 2 + 1}. ${m.san}` : m.san)).join(' ')
   const tags = [
-    ['Event', `Counterplay ${view.rated ? 'rated' : 'casual'} game`],
+    ['Event', `Oukplay ${view.rated ? 'rated' : 'casual'} game`],
     ['Site', `${location.origin}/game/${view.id}`],
     ['Date', date],
     ['White', view.white?.name ?? '?'],
@@ -70,7 +70,7 @@ function pgnOf(view: GameView, history: MoveRecord[]): string {
 
 /* -------------------------------------------------------------------- chat */
 
-const MUTE_KEY = 'counterplay.chat.muted'
+const MUTE_KEY = 'oukplay.chat.muted'
 
 function Chat({ lines, canChat, onSay }: { lines: ChatLine[]; canChat: boolean; onSay: (text: string) => void }) {
   const [draft, setDraft] = useState('')

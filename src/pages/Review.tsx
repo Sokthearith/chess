@@ -42,7 +42,7 @@ function summaryLine(sum: GameReview['white']): string {
   return parts.length ? parts.join(' — ') : 'no mistakes'
 }
 
-const BEST_PREF = 'counterplay.bestArrow'
+const BEST_PREF = 'oukplay.bestArrow'
 function readBestPref(): boolean {
   try {
     return localStorage.getItem(BEST_PREF) !== 'off'

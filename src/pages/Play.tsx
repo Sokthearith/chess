@@ -307,7 +307,7 @@ function Game({ config, you, onRematch, onSetup }: GameProps) {
     const moves = state.history.map((m, i) => (i % 2 === 0 ? `${i / 2 + 1}. ${m.san}` : m.san)).join(' ')
     const d = new Date()
     const date = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
-    return `[Event "Counterplay game"]\n[Date "${date}"]\n[White "${white}"]\n[Black "${black}"]\n[Result "${res}"]\n\n${moves} ${res}`
+    return `[Event "Oukplay game"]\n[Date "${date}"]\n[White "${white}"]\n[Black "${black}"]\n[Result "${res}"]\n\n${moves} ${res}`
   }
   const review = () => {
     const text = pgn()

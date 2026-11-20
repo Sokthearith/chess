@@ -20,7 +20,7 @@ export interface Progress {
   lessons: string[]
 }
 
-const KEY = 'counterplay.learn.v1'
+const KEY = 'oukplay.learn.v1'
 const DEFAULT: Progress = { puzzleRating: 1200, solved: [], attempted: 0, streak: 0, bestStreak: 0, openings: {}, endgames: [], lessons: [] }
 
 let current: Progress = read()

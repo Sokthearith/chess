@@ -1,5 +1,5 @@
 /**
- * Counterplay's server: the built site, a small JSON API for accounts and
+ * Oukplay's server: the built site, a small JSON API for accounts and
  * profiles, and the WebSocket that runs online games. Run with Node 22.18+
  * (TypeScript is loaded directly): `node server/index.ts`.
  */
@@ -28,7 +28,7 @@ const PORT = Number(process.env.PORT ?? 8787)
 const HOST = process.env.HOST ?? '0.0.0.0'
 const DIST = resolve(process.env.DIST_DIR ?? 'dist')
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
-const RESERVED = /^(guest|admin|administrator|mod|moderator|system|counterplay|anonymous|stockfish|support|root)/i
+const RESERVED = /^(guest|admin|administrator|mod|moderator|system|oukplay|anonymous|stockfish|support|root)/i
 
 const hub = new Hub()
 const authLimit = new RateLimiter(10, 10 / 60)
@@ -256,7 +256,7 @@ server.on('upgrade', (req, socket, head) => {
 setInterval(() => hub.heartbeat(), 30_000).unref()
 setInterval(() => purgeSessions(), 6 * 3600_000).unref()
 
-server.listen(PORT, HOST, () => console.log(`Counterplay on http://localhost:${PORT} (serving ${DIST})`))
+server.listen(PORT, HOST, () => console.log(`Oukplay on http://localhost:${PORT} (serving ${DIST})`))
 
 /** On a deploy: save every live game's clocks, tell clients to reconnect, and stop. */
 function shutdown(signal: string) {

@@ -2,11 +2,11 @@ import { useSyncExternalStore } from 'react'
 
 /**
  * Where reviewed PGNs live. A game opened for review is kept under
- * `counterplay.pgn.<hash>` in localStorage (sessionStorage as a fallback), and
+ * `oukplay.pgn.<hash>` in localStorage (sessionStorage as a fallback), and
  * the last eight are listed on the analysis page as "Recently analysed".
  */
-export const PGN_PREFIX = 'counterplay.pgn.'
-const RECENT_KEY = 'counterplay.recent.v1'
+export const PGN_PREFIX = 'oukplay.pgn.'
+const RECENT_KEY = 'oukplay.recent.v1'
 const MAX_RECENT = 8
 
 export interface RecentGame {

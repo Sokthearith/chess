@@ -6,7 +6,7 @@ import { clearError, onMessage, send, subscribeLobby, useOnline } from '../../on
 import { ONLINE_TIME_CONTROLS, timeControl, type ColorChoice } from '../../online/protocol'
 import { playerLabel } from './OnlineGame'
 
-const PREF_KEY = 'counterplay.online.v1'
+const PREF_KEY = 'oukplay.online.v1'
 
 interface Prefs {
   rated: boolean

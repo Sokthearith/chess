@@ -27,7 +27,7 @@ export interface PlayConfig {
   showEval: boolean
 }
 
-const CONFIG_KEY = 'counterplay.play.v1'
+const CONFIG_KEY = 'oukplay.play.v1'
 export const DEFAULT_CONFIG: PlayConfig = { opponent: 'computer', level: 3, side: 'w', time: 'none', showEval: false }
 
 export function readConfig(): PlayConfig {

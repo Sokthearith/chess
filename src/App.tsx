@@ -61,7 +61,7 @@ function TitleAndScroll() {
                       : pathname.startsWith('/learn')
                       ? 'Learn'
                       : ''
-    document.title = name ? `${name}, Counterplay` : 'Counterplay'
+    document.title = name ? `${name}, Oukplay` : 'Oukplay'
   }, [pathname])
   useEffect(() => {
     if (!hash) {

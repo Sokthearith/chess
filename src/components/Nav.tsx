@@ -64,9 +64,9 @@ export function Nav() {
         Skip to content
       </a>
       <div className="container nav__row">
-        <NavLink to="/" className="wordmark" aria-label="Counterplay, home">
+        <NavLink to="/" className="wordmark" aria-label="Oukplay, home">
           <Crosshair />
-          Counterplay
+          Oukplay
         </NavLink>
         <button type="button" className="nav__menu" aria-expanded={open} aria-controls="site-links" onClick={() => setOpen((o) => !o)}>
           <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">

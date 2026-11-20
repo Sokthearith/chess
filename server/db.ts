@@ -12,7 +12,7 @@ import { SPEEDS, type Speed } from '../src/online/protocol.ts'
 export const DATA_DIR = resolve(process.env.DATA_DIR ?? 'data')
 mkdirSync(DATA_DIR, { recursive: true })
 
-const db = new DatabaseSync(join(DATA_DIR, 'counterplay.db'))
+const db = new DatabaseSync(join(DATA_DIR, 'oukplay.db'))
 db.exec(`
   PRAGMA journal_mode = WAL;
   PRAGMA synchronous = NORMAL;

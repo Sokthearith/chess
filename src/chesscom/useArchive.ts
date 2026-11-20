@@ -11,7 +11,7 @@ import {
   type ChessComStats,
 } from './api'
 
-const USER_KEY = 'counterplay.chesscom.username'
+const USER_KEY = 'oukplay.chesscom.username'
 
 export function rememberedUsername(): string {
   try {

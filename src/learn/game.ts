@@ -10,7 +10,7 @@ import { toast } from './toasts'
  * XP that pays for new learning rather than repetition, personal bests instead
  * of a leaderboard, and a streak freeze so one missed day is not a punishment.
  *
- * Everything lives in this browser (localStorage `counterplay.game.v1`).
+ * Everything lives in this browser (localStorage `oukplay.game.v1`).
  */
 
 /* ------------------------------------------------------------------ dates */
@@ -93,7 +93,7 @@ export interface GameState {
   totals: Record<string, number>
 }
 
-const KEY = 'counterplay.game.v1'
+const KEY = 'oukplay.game.v1'
 const listeners = new Set<() => void>()
 
 /** First visit: turn learning already done into XP, so nobody starts at zero after weeks of puzzles. */

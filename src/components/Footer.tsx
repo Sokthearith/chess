@@ -6,7 +6,7 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="container footer__row">
-        <p className="mono mono--mute">Counterplay — theme: {theme.name}</p>
+        <p className="mono mono--mute">Oukplay — theme: {theme.name}</p>
         <div className="footer__links mono">
           <Link to="/play">Play</Link>
           <Link to="/online">Online</Link>

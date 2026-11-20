@@ -11,7 +11,7 @@ const VERIFY_DEPTH = 20
 /** Two lines per position: the gap between them is what makes a move "great". */
 const MULTI_PV = 2
 /** v4: depth 16 + a depth-20 check of every critical move; mate, tie and sacrifice rules of 2026-11-10. Older cached reviews are re-run. */
-const CACHE_PREFIX = 'counterplay.review.v4.'
+const CACHE_PREFIX = 'oukplay.review.v4.'
 
 /** Grades that change the story of a game, and moves close to the inaccuracy line, are checked again deeper. */
 function isCritical(r: MoveReview): boolean {

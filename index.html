@@ -3,18 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Counterplay is a chess board you can play in the browser, in seven themes: board, pieces and type change together." />
+    <meta name="description" content="Oukplay is a chess board you can play in the browser, in seven themes: board, pieces and type change together." />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#E8E4DC" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%23E8E4DC%27/%3E%3Cpath d=%27M8 0v5.5M8 10.5V16M0 8h5.5M10.5 8H16%27 stroke=%27%23111%27/%3E%3Ccircle cx=%278%27 cy=%278%27 r=%274.5%27 fill=%27none%27 stroke=%27%23111%27/%3E%3C/svg%3E" />
-    <title>Counterplay</title>
+    <title>Oukplay</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet" />
     <script>
       document.documentElement.classList.add('js');
       try {
-        var t = localStorage.getItem('counterplay.theme');
+        // The site used to be called Counterplay: carry its saved data over once.
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('counterplay.') === 0) {
+            var nk = 'oukplay.' + k.slice(12);
+            if (localStorage.getItem(nk) === null) localStorage.setItem(nk, localStorage.getItem(k));
+            localStorage.removeItem(k);
+          }
+        }
+        var t = localStorage.getItem('oukplay.theme');
         if (t && /^[a-z]+$/.test(t)) document.documentElement.dataset.theme = t;
       } catch (e) {}
     </script>

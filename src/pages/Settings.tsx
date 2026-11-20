@@ -14,8 +14,8 @@ import { useSoundSetting } from '../sound/useSound'
 import { loadThemeFonts, setTheme, useTheme } from '../theme/useTheme'
 import { DEFAULT_THEME, THEMES } from '../theme/themes'
 
-const BEST_PREF = 'counterplay.bestArrow'
-const USER_KEY = 'counterplay.chesscom.username'
+const BEST_PREF = 'oukplay.bestArrow'
+const USER_KEY = 'oukplay.chesscom.username'
 
 const SECTIONS = [
   { id: 'look', title: 'Look' },

@@ -296,7 +296,7 @@ band-passed noise burst (the click of felt on wood) over a falling sine body (th
 - A review step sounds the move; stepping forward onto a graded move adds its grade 170ms later.
   Excellent and good are silent so a clean game is not a chorus.
 - Repeats of one sound closer than 45ms are dropped (holding an arrow key).
-- `SOUND — ON / OFF` in the nav, `aria-pressed`, stored in `localStorage` (`counterplay.sound`).
+- `SOUND — ON / OFF` in the nav, `aria-pressed`, stored in `localStorage` (`oukplay.sound`).
   Audio starts suspended and is unlocked by the first pointer or key press.
 
 ## 7. UX rules for a game board (from the ux domain search, applied)
@@ -356,13 +356,13 @@ The site now ships thirteen themes (seven added 2026-11-10 morning, six more the
 | Sunset | chocolate, cream, orange accent | Shrikhand / DM Sans | mustard and burnt orange, rounded | silhouette in cream and chocolate |
 | High Contrast | black, white, yellow marks and focus | Atkinson Hyperlegible | white and mid grey | silhouette with 4px outlines; labels in sentence case |
 
-**How it works.** `src/theme/themes.ts` lists the themes (piece set, fonts, copy); `src/theme/useTheme.ts` stores the choice in `localStorage` (`counterplay.theme`), sets `<html data-theme>`, loads that theme's Google Fonts on demand, and updates `theme-color`. An inline script in `index.html` sets the attribute before first paint. Every themable token lives in `src/styles/themes.css` in a `:root, [data-theme]` block (Typography values) followed by one block per theme. Derived tokens (board, pieces, eval) are declared in the same block as the palette, so a picker card with `data-theme="arcade"` renders Arcade inside any page. Piece drawings are in `src/board/pieceSets.tsx`; `<Piece>` draws in the active theme's set unless given `set`.
+**How it works.** `src/theme/themes.ts` lists the themes (piece set, fonts, copy); `src/theme/useTheme.ts` stores the choice in `localStorage` (`oukplay.theme`), sets `<html data-theme>`, loads that theme's Google Fonts on demand, and updates `theme-color`. An inline script in `index.html` sets the attribute before first paint. Every themable token lives in `src/styles/themes.css` in a `:root, [data-theme]` block (Typography values) followed by one block per theme. Derived tokens (board, pieces, eval) are declared in the same block as the palette, so a picker card with `data-theme="arcade"` renders Arcade inside any page. Piece drawings are in `src/board/pieceSets.tsx`; `<Piece>` draws in the active theme's set unless given `set`.
 
 **Rules for adding a theme.** Define every palette, board and piece token; keep White's pieces lighter than Black's in every theme (players read colour by lightness); keep square marks (`--mark`) visible on both square colours; check the hero headline wraps before the king at 1440px; check text contrast for body copy on `--color-paper` and for `--color-paper` on `--color-ink` (inverted bands).
 
 **Copy per theme.** The landing headline, the board sentence, the motto under the statement and the footer colophon come from the theme, so the page never describes a look it is not showing.
 
-**Board options** (in the theme panel, stored in `counterplay.settings.v1`): coordinates, legal-move dots, auto-queen. Coordinates and dots are `data-coords` / `data-hints` switches on `<html>`; auto-queen is read by `Board` when a pawn reaches the last rank.
+**Board options** (in the theme panel, stored in `oukplay.settings.v1`): coordinates, legal-move dots, auto-queen. Coordinates and dots are `data-coords` / `data-hints` switches on `<html>`; auto-queen is read by `Board` when a pawn reaches the last rank.
 
 **Knight arrows** bend like the move: two squares along the long leg, then one to the side (`knightArrowPath` in `Board.tsx`), drawn as one polygon so the translucent fill never doubles at the corner.
 
@@ -377,7 +377,7 @@ The site now ships thirteen themes (seven added 2026-11-10 morning, six more the
 ## 12. Home, saved games, settings, grading (added 2026-11-10)
 
 - **Home** keeps the poster hero (three actions: Play, Review, Learn) and the live board, and adds: six "ways in" cards (Play, Review, Learn, Puzzles, Famous games, Your games) with live stats; a grade explainer (all ten grade icons, one line each); three featured famous games; a strip of all themes that switches the look on click.
-- **Saved games** (`src/library/saved.ts`, localStorage `counterplay.saved.v1`): a star on every Chess.com archive row, a Save button on every review and on the end-of-game card. Each saved game keeps its own PGN (Chess.com games keep their route), so it survives the recent list rolling over. Listed at the top of Your games and beside the Analysis form.
+- **Saved games** (`src/library/saved.ts`, localStorage `oukplay.saved.v1`): a star on every Chess.com archive row, a Save button on every review and on the end-of-game card. Each saved game keeps its own PGN (Chess.com games keep their route), so it survives the recent list rolling over. Listed at the top of Your games and beside the Analysis form.
 - **Settings** (`/settings`, gear in the nav): theme grid; board (coordinates, legal-move dots, auto-queen, last-move highlight, animation); sound on/off, volume, test sounds; new-game defaults (opponent, level, colour, time, eval bar); review (best-move arrow); your data (reset learning progress, clear saved/recent, forget the Chess.com username, restore defaults), each destructive action confirmed by a second press.
 - **Grading** (`src/analysis/review.ts`), checked against real Stockfish on famous games with a node harness: a mating move, a move that keeps the fastest forced mate, or the engine's second line scoring the same as its first is **best**; a sacrifice counts as **brilliant** when the mover would not already be winning without it (judged by the engine's second choice, or it is the only way to a forced mate) and stands no worse than about −0.5 after (Kasparov's 24.Rxd4); a quiet only-move that leaves an attacked piece en prise counts too (Fischer's 17...Be6); a pseudo-sacrifice that wins the material straight back does not (Fischer's 18.Nd4 v Spassky); walking into a forced mate is a **blunder**, softened to mistake below −7 and inaccuracy below −10 (the lichess rule); letting a forced mate go is a **miss** while still above +7, otherwise a blunder.
 
@@ -411,3 +411,10 @@ Asked for "playable with people just like chess.com", ahead of a deploy. The use
 - The sticky start button is a Play-setup rule only; the lobby, login and challenge pages keep it in the flow.
 
 **Game rules (server)**: clocks start after Black's first move; each side has 30 s for its first move or the game is aborted (aborted games are not stored); checkmate, stalemate, threefold, fifty-move and insufficient material end the game at once; a flag against a lone king or king and one minor is a draw; draw offers lapse when the other side moves, one per four plies. Ratings are Glicko-2 per speed, updated each game (lichess's τ 0.75, RD 45–350, provisional above RD 110); guests play casual only. Only players can chat; 140 characters, five lines per ten seconds.
+
+## 15. Name: Oukplay (added 2026-11-20)
+
+The site is called **Oukplay** (after *ouk*, Cambodian chess); it was Counterplay before launch. One word, capital O only, in running text. The wordmark keeps the same treatment (crosshair mark plus the display face); nothing else about the look changes.
+
+- Page titles read `Page, Oukplay`; the home title is just `Oukplay`. Exported PGNs say `Oukplay game` (offline) or `Oukplay rated game` / `Oukplay casual game` (online).
+- Browser storage keys start with `oukplay.` and cookies with `op_`. `index.html` moves any old `counterplay.*` keys over once, so nobody loses settings, saved games or Learn progress.

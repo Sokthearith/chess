@@ -13,7 +13,7 @@ import type { ClientMessage, GameView, Profile, ServerMessage, UserInfo } from '
 const PORT = 20000 + Math.floor(Math.random() * 20000)
 const BASE = `http://127.0.0.1:${PORT}`
 const ORIGIN = `http://127.0.0.1:${PORT}`
-const dataDir = mkdtempSync(join(tmpdir(), 'counterplay-check-'))
+const dataDir = mkdtempSync(join(tmpdir(), 'oukplay-check-'))
 
 let server: ChildProcess | null = null
 let failures = 0
@@ -26,7 +26,7 @@ function startServer(): Promise<void> {
   return new Promise((res, rej) => {
     const t = setTimeout(() => rej(new Error('server did not start')), 10_000)
     server!.stdout!.on('data', (d: Buffer) => {
-      if (String(d).includes('Counterplay on')) {
+      if (String(d).includes('Oukplay on')) {
         clearTimeout(t)
         res()
       }

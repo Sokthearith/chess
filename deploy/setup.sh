@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sets up Counterplay on a fresh Ubuntu server (Oracle Cloud Always Free, or any VPS)
+# Sets up Oukplay on a fresh Ubuntu server (Oracle Cloud Always Free, or any VPS)
 # with HTTPS for your domain. Safe to run again: it updates and restarts.
 #
 #   curl -fsSL https://raw.githubusercontent.com/Sokthearith/chess/main/deploy/setup.sh | sudo bash -s -- yourdomain.com
@@ -7,7 +7,7 @@ set -euo pipefail
 
 DOMAIN="${1:-}"
 REPO="${REPO:-https://github.com/Sokthearith/chess.git}"
-DIR="${DIR:-/opt/counterplay}"
+DIR="${DIR:-/opt/oukplay}"
 
 if [ "$(id -u)" != 0 ]; then echo "Run with sudo." >&2; exit 1; fi
 if [ -z "$DOMAIN" ] && [ ! -f "$DIR/deploy/.env" ]; then echo "Usage: setup.sh yourdomain.com" >&2; exit 1; fi
